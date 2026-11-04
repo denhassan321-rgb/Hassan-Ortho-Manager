@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#123b55">
+<title>إدارة عيادة التقويم</title>
+<style>
+:root{--navy:#123b55;--teal:#168b88;--bg:#f3f6f8;--ink:#20313d;--muted:#71808b;--line:#e2e9ed;--white:#fff;--red:#b84242;--green:#25845d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,Arial,sans-serif}
+header{background:linear-gradient(120deg,#123b55,#176b75);color:white;padding:22px 18px 18px}
+header h1{font-size:21px;margin:0 0 6px}header p{margin:0;color:#d8e8ec;font-size:13px}
+main{max-width:1050px;margin:auto;padding:16px}
+.tabs{display:flex;gap:7px;overflow:auto;margin:0 0 15px}
+button,.tab{border:0;border-radius:10px;padding:11px 14px;font:inherit;cursor:pointer}
+.tab{background:#e4ecef;color:var(--navy);white-space:nowrap}.tab.active{background:var(--navy);color:white}
+.panel{display:none}.panel.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}
+.card,.box{background:white;border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:0 2px 8px #123b5508}
+.card small{color:var(--muted)}.card strong{display:block;font-size:22px;margin-top:8px;color:var(--navy)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+input,select,textarea{width:100%;padding:11px;border:1px solid #d5dfe5;border-radius:9px;font:inherit;background:#fff;color:var(--ink)}
+textarea{min-height:85px;resize:vertical}label{display:block;font-size:13px;color:#52636e;margin-bottom:6px}
+.field{margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.primary{background:var(--teal);color:white}.secondary{background:#e8eff2;color:var(--navy)}.danger{background:#fae9e9;color:var(--red)}
+.list{display:grid;gap:9px}.item{background:white;border:1px solid var(--line);border-radius:12px;padding:13px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.item h3{margin:0 0 5px;font-size:15px}.muted{color:var(--muted);font-size:12px}.money{font-weight:bold;color:var(--navy)}
+.actions{display:flex;gap:6px;flex-wrap:wrap}.actions button{padding:8px 10px;font-size:12px}
+.badge{font-size:11px;padding:5px 8px;border-radius:20px;background:#fff0dc;color:#9a6415}.badge.ok{background:#e3f4eb;color:var(--green)}
+.modal{position:fixed;inset:0;background:#102b3dcc;display:none;align-items:center;justify-content:center;padding:14px;z-index:5}.modal.show{display:flex}
+.dialog{background:white;border-radius:16px;padding:18px;width:min(620px,100%);max-height:92vh;overflow:auto}.dialog h2{margin:0 0 15px;font-size:18px}
+.close{float:left;background:#edf1f3;color:#334}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px;border-bottom:1px solid var(--line);text-align:right}th{color:var(--muted)}
+.empty{text-align:center;padding:25px;color:var(--muted);background:white;border-radius:12px}
+.note{background:#eef6f7;border:1px solid #d5e9eb;padding:12px;border-radius:10px;font-size:12px;line-height:1.8;margin-top:14px}
+@media(max-width:700px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}.actions{width:100%}.actions button{flex:1}}
+</style>
+</head>
+<body>
+<header><h1>إدارة عيادة التقويم</h1><p>ملفات المرضى • الحسابات • الجلسات • المواعيد</p></header>
+<main>
+<nav class="tabs">
+<button class="tab active" data-tab="home">الرئيسية</button>
+<button class="tab" data-tab="patients">المرضى</button>
+<button class="tab" data-tab="appointments">المواعيد</button>
+<button class="tab" data-tab="backup">النسخ الاحتياطي</button>
+</nav>
+<section id="home" class="panel active">
+<div class="cards">
+<div class="card"><small>إجمالي المرضى</small><strong id="kPatients">0</strong></div>
+<div class="card"><small>إجمالي الإيرادات</small><strong id="kPaid">0</strong></div>
+<div class="card"><small>المبالغ المتبقية</small><strong id="kRemain">0</strong></div>
+<div class="card"><small>مواعيد اليوم</small><strong id="kToday">0</strong></div>
+</div>
+<div class="box"><h3>مواعيد اليوم والقادمة</h3><div id="upcoming" class="list"></div></div>
+</section>
+<section id="patients" class="panel">
+<div class="toolbar"><input id="search" placeholder="ابحث باسم المريض أو رقم الهاتف..." style="flex:1;min-width:190px"><button class="primary" onclick="openPatient()">+ إضافة مريض</button></div>
+<div id="patientList" class="list"></div>
+</section>
+<section id="appointments" class="panel"><div class="note">في نسخة Android، يرسل التطبيق تنبيهًا قبل الموعد بساعة إذا تم إدخال وقت للموعد، وبعد السماح بالإشعارات.</div>
+<div class="toolbar"><button class="primary" onclick="openAppointment()">+ إضافة موعد</button></div>
+<div id="appointmentList" class="list"></div>
+</section>
+<section id="backup" class="panel">
+<div class="box">
+<h3>حفظ واستعادة بيانات العيادة</h3>
+<p>احفظ نسخة احتياطية من بياناتك في ملف، واحتفظ بها في مكان آمن. يمكنك استعادتها عند تغيير الهاتف أو المتصفح.</p>
+<div class="toolbar"><button class="primary" onclick="backup()">تنزيل نسخة احتياطية</button><label class="secondary" style="padding:11px 14px;border-radius:10px;cursor:pointer">استعادة نسخة<input type="file" id="restoreFile" accept=".json,application/json" hidden onchange="restoreBackup(event)"></label></div>
+<div class="note">البيانات محفوظة محليًا على هذا الجهاز والمتصفح، ولا تُرفع إلى الإنترنت. لا تحذف بيانات المتصفح أو التطبيق قبل تنزيل نسخة احتياطية. استخدم رمزًا أو اسمًا مختصرًا بدل المعلومات شديدة الحساسية.</div>
+</div>
+</section>
+</main>
+
+<div class="modal" id="patientModal"><div class="dialog">
+<button class="close" onclick="closeModal('patientModal')">إغلاق ✕</button><h2 id="patientTitle">إضافة مريض</h2>
+<form id="patientForm">
+<input type="hidden" id="pId">
+<div class="grid">
+<div class="field"><label>اسم المريض *</label><input id="pName" required></div>
+<div class="field"><label>رقم الهاتف</label><input id="pPhone" type="tel"></div>
+<div class="field"><label>العمر</label><input id="pAge" type="number" min="1"></div>
+<div class="field"><label>نوع العلاج</label><input id="pType" placeholder="تقويم ثابت / متحرك..."></div>
+<div class="field"><label>التكلفة الإجمالية</label><input id="pCost" type="number" min="0" step="any"></div>
+<div class="field"><label>تاريخ بدء العلاج</label><input id="pStart" type="date"></div>
+</div>
+<div class="field"><label>الخطة العلاجية</label><textarea id="pPlan" placeholder="اكتب مراحل وخطوات العلاج..."></textarea></div>
+<div class="field"><label>ملاحظات</label><textarea id="pNotes"></textarea></div>
+<button class="primary" type="submit">حفظ بيانات المريض</button>
+</form></div></div>
+
+<div class="modal" id="detailModal"><div class="dialog">
+<button class="close" onclick="closeModal('detailModal')">إغلاق ✕</button><div id="detailContent"></div>
+</div></div>
+
+<div class="modal" id="paymentModal"><div class="dialog">
+<button class="close" onclick="closeModal('paymentModal')">إغلاق ✕</button><h2>تسجيل دفعة</h2>
+<form id="paymentForm"><input type="hidden" id="payPatient">
+<div class="grid"><div class="field"><label>تاريخ الدفع</label><input id="payDate" type="date" required></div><div class="field"><label>المبلغ المدفوع *</label><input id="payAmount" type="number" min="0.01" step="any" required></div></div>
+<div class="field"><label>رقم / وصف الجلسة</label><input id="paySession" placeholder="الجلسة الثالثة"></div><div class="field"><label>ملاحظات</label><input id="payNote"></div>
+<button class="primary">حفظ الدفعة</button></form></div></div>
+
+<div class="modal" id="appointmentModal"><div class="dialog">
+<button class="close" onclick="closeModal('appointmentModal')">إغلاق ✕</button><h2>إضافة موعد</h2>
+<form id="appointmentForm"><div class="field"><label>المريض *</label><select id="aPatient" required></select></div>
+<div class="grid"><div class="field"><label>التاريخ *</label><input id="aDate" type="date" required></div><div class="field"><label>الوقت</label><input id="aTime" type="time"></div></div>
+<div class="field"><label>تفاصيل الموعد</label><input id="aNote" placeholder="تغيير السلك / متابعة..."></div><button class="primary">حفظ الموعد</button></form></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let db=JSON.parse(localStorage.getItem('orthoClinicDB')||'{"patients":[],"appointments":[]}');
+function save(){localStorage.setItem('orthoClinicDB',JSON.stringify(db));render()}
+function money(n){return (Number(n)||0).toLocaleString('en-US')+' ر.ي'}
+function paid(p){return (p.payments||[]).reduce((s,x)=>s+Number(x.amount||0),0)}
+function remaining(p){return Number(p.cost||0)-paid(p)}
+function dateToday(){return new Date().toISOString().slice(0,10)}
+function showTab(id){document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));render()}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function modal(id){$(id).classList.add('show')}function closeModal(id){$(id).classList.remove('show')}
+function patient(id){return db.patients.find(p=>p.id===id)}
+function render(){
+$('kPatients').textContent=db.patients.length;
+$('kPaid').textContent=money(db.patients.reduce((s,p)=>s+paid(p),0));
+$('kRemain').textContent=money(db.patients.reduce((s,p)=>s+Math.max(0,remaining(p)),0));
+$('kToday').textContent=db.appointments.filter(a=>a.date===dateToday()).length;
+let upcoming=db.appointments.filter(a=>a.date>=dateToday()).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).slice(0,8);
+$('upcoming').innerHTML=upcoming.length?upcoming.map(a=>`<div class="item"><div><h3>${esc(patient(a.patientId)?.name||'مريض محذوف')}</h3><div class="muted">${a.date} ${a.time||''} — ${esc(a.note||'موعد')}</div></div></div>`).join(''):'<div class="empty">لا توجد مواعيد قادمة</div>';
+let q=($('search').value||'').toLowerCase();
+let list=db.patients.filter(p=>(p.name+' '+(p.phone||'')).toLowerCase().includes(q));
+$('patientList').innerHTML=list.length?list.map(p=>`<div class="item"><div><h3>${esc(p.name)}</h3><div class="muted">${esc(p.type||'')}${p.phone?' • '+esc(p.phone):''}</div><div class="money">المتبقي: ${money(Math.max(0,remaining(p)))}</div></div><div class="actions"><button class="secondary" onclick="showDetails('${p.id}')">الملف</button><button class="primary" onclick="openPayment('${p.id}')">إضافة دفعة</button><button class="secondary" onclick="editPatient('${p.id}')">تعديل</button></div></div>`).join(''):'<div class="empty">لا يوجد مرضى. أضف أول مريض للبدء.</div>';
+let apps=[...db.appointments].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+$('appointmentList').innerHTML=apps.length?apps.map(a=>`<div class="item"><div><h3>${esc(patient(a.patientId)?.name||'مريض محذوف')}</h3><div class="muted">${a.date} ${a.time||''} • ${esc(a.note||'موعد')}</div></div><div class="actions"><button class="danger" onclick="deleteAppointment('${a.id}')">حذف الموعد</button></div></div>`).join(''):'<div class="empty">لا توجد مواعيد مسجلة</div>';
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function openPatient(){ $('patientForm').reset();$('pId').value='';$('patientTitle').textContent='إضافة مريض';modal('patientModal')}
+function editPatient(id){let p=patient(id);if(!p)return;$('patientForm').reset();$('pId').value=id;$('patientTitle').textContent='تعديل بيانات المريض';['Name','Phone','Age','Type','Cost','Start','Plan','Notes'].forEach(k=>{let key=k.toLowerCase();$('p'+k).value=p[key]||''});modal('patientModal')}
+$('patientForm').onsubmit=e=>{e.preventDefault();let id=$('pId').value;let old=patient(id);let p={id:id||String(Date.now()),name:$('pName').value.trim(),phone:$('pPhone').value,age:$('pAge').value,type:$('pType').value,cost:$('pCost').value,start:$('pStart').value,plan:$('pPlan').value,notes:$('pNotes').value,payments:old?.payments||[]};if(old)db.patients[db.patients.indexOf(old)]=p;else db.patients.push(p);save();closeModal('patientModal')};
+function showDetails(id){let p=patient(id);if(!p)return;let hist=p.payments||[];$('detailContent').innerHTML=`<h2>${esc(p.name)}</h2><p class="muted">${esc(p.type||'')} ${p.phone?' • '+esc(p.phone):''}</p>
+<div class="cards"><div class="card"><small>التكلفة</small><strong>${money(p.cost)}</strong></div><div class="card"><small>المدفوع</small><strong>${money(paid(p))}</strong></div><div class="card"><small>المتبقي</small><strong>${money(Math.max(0,remaining(p)))}</strong></div></div>
+<h3>الخطة العلاجية</h3><p>${esc(p.plan||'لم تُسجل خطة علاجية')}</p><h3>الملاحظات</h3><p>${esc(p.notes||'لا توجد')}</p><h3>سجل الدفعات</h3>
+${hist.length?`<table><tr><th>التاريخ</th><th>الجلسة</th><th>المبلغ</th><th>ملاحظات</th></tr>${hist.map(x=>`<tr><td>${x.date}</td><td>${esc(x.session||'—')}</td><td>${money(x.amount)}</td><td>${esc(x.note||'—')}</td></tr>`).join('')}</table>`:'<p class="muted">لا توجد دفعات بعد.</p>'}
+<div class="actions" style="margin-top:15px"><button class="primary" onclick="closeModal('detailModal');openPayment('${id}')">تسجيل دفعة</button><button class="secondary" onclick="closeModal('detailModal');openAppointment('${id}')">إضافة موعد</button><button class="danger" onclick="deletePatient('${id}')">حذف ملف المريض</button></div>`;
+modal('detailModal')}
+function openPayment(id){$('paymentForm').reset();$('payPatient').value=id;$('payDate').value=dateToday();modal('paymentModal')}
+$('paymentForm').onsubmit=e=>{e.preventDefault();let p=patient($('payPatient').value);if(!p)return;p.payments=p.payments||[];p.payments.push({date:$('payDate').value,amount:Number($('payAmount').value),session:$('paySession').value,note:$('payNote').value});save();closeModal('paymentModal')};
+function openAppointment(id){$('appointmentForm').reset();$('aPatient').innerHTML=db.patients.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(id)$('aPatient').value=id;$('aDate').value=dateToday();modal('appointmentModal')}
+$('appointmentForm').onsubmit=e=>{
+ e.preventDefault();
+ let ap={id:String(Date.now()),patientId:$('aPatient').value,date:$('aDate').value,time:$('aTime').value,note:$('aNote').value};
+ db.appointments.push(ap); save();
+ try {
+   if(window.AndroidBridge && ap.time){
+     let p=patient(ap.patientId);
+     let ts=new Date(ap.date+'T'+ap.time).getTime()-60*60*1000;
+     if(ts>Date.now()) AndroidBridge.scheduleReminder(ap.id,ts,'موعد المريض: '+(p?.name||''),ap.note||'موعدك في عيادة التقويم بعد ساعة');
+   }
+ } catch(err) {}
+ closeModal('appointmentModal')
+};
+function deleteAppointment(id){if(confirm('هل تريد حذف هذا الموعد؟')){db.appointments=db.appointments.filter(a=>a.id!==id);try{if(window.AndroidBridge)AndroidBridge.cancelReminder(id)}catch(err){}save()}}
+function deletePatient(id){if(confirm('سيتم حذف ملف المريض وكل دفعاته ومواعيده. هل أنت متأكد؟')){db.patients=db.patients.filter(p=>p.id!==id);db.appointments=db.appointments.filter(a=>a.patientId!==id);save();closeModal('detailModal')}}
+$('search').addEventListener('input',render);
+function backup(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='نسخة_احتياطية_عيادة_التقويم_'+dateToday()+'.json';a.click();URL.revokeObjectURL(a.href)}
+function restoreBackup(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!Array.isArray(x.patients)||!Array.isArray(x.appointments))throw 0;if(confirm('سيتم استبدال البيانات الحالية بالنسخة المختارة. هل تريد المتابعة؟')){db=x;save();alert('تمت استعادة النسخة بنجاح')}}catch(_){alert('الملف غير صالح أو ليس نسخة احتياطية من التطبيق')}e.target.value=''};r.readAsText(f)}
+render();
+</script>
+</body></html>
